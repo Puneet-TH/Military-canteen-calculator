@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Military Canteen VAT Calculator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Add background image to the entire body */
+        body {
+            background: url("https://content3.jdmagicbox.com/comp/ambala/n2/9999px171.x171.181201080753.l3n2/catalogue/golden-lion-canteen-jagadhari-road-ambala-general-stores-36nfh0oswi.jpg") no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Courier New', Courier, monospace;
+            color: #d4d4d4;
+            font-weight: bold;
+        }
+        
+        /* Style the container to stand out from the background */
+        .container {
+            background: rgba(46, 59, 31, 0.9); /* Semi-transparent military green */
+            border: 2px solid #6b8e23;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            margin-top: 5rem;
+        }
+
+        h1, h2 {
+            color: #f0e68c;
+            text-align: center;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        button {
+            font-weight: bold;
+        }
+
+        table th {
+            background-color: #394d27;
+            color: #f0e68c;
+        }
+
+        table tbody tr:nth-child(even) {
+            background-color: #3f512c;
+        }
+
+        table tbody tr:nth-child(odd) {
+            background-color: #324126;
+        }
+
+        .btn-warning {
+            background-color: #d4a017;
+            border-color: #d4a017;
+        }
+
+        .btn-danger {
+            background-color: #a83232;
+            border-color: #a83232;
+        }
+
+        .btn-success, .btn-info {
+            font-size: 1rem;
+        }
+
+        #summary-section {
+            background-color: #3b4b2a;
+            border: 1px solid #6b8e23;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Military Canteen Calculator</h1>
+
+        <!-- Form for Adding Entry -->
+        <form id="vat-form" class="mt-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="product-name" class="form-label">Product Name</label>
+                    <input type="text" id="product-name" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="stock" class="form-label">Stock</label>
+                    <input type="number" id="stock" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="vat-rate" class="form-label">VAT Rate</label>
+                    <input type="number" step="0.01" id="vat-rate" class="form-control" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Add Entry</button>
+        </form>
+
+        <!-- Table for Displaying Entries -->
+        <h2 class="mt-5">Entries</h2>
+        <table class="table table-striped" id="entries-table">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Stock</th>
+                    <th>VAT Rate</th>
+                    <th>VAT Amount</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <!-- Buttons for Additional Actions -->
+        <div class="mt-4">
+            <button id="download-excel" class="btn btn-success">Download Excel</button>
+            <button id="generate-summary" class="btn btn-info">Generate Summary</button>
+        </div>
+
+        <!-- Summary Section -->
+        <div id="summary-section" class="mt-5" style="display: none;">
+            <h2>Summary Report</h2>
+            <p id="total-vat"></p>
+            <p id="total-entries"></p>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = "http://127.0.0.1:5000"; // Update this if hosted elsewhere
+
+        function loadEntries() {
+            axios.get(`${apiUrl}/entries`).then(response => {
+                const tableBody = document.querySelector("#entries-table tbody");
+                tableBody.innerHTML = "";
+                response.data.forEach((entry, index) => {
+                    const row = `<tr>
+                        <td>${entry[0]}</td>
+                        <td>${entry[1]}</td>
+                        <td>${entry[2]}</td>
+                        <td>${entry[3]}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="editEntry(${index})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteEntry(${index})">Delete</button>
+                        </td>
+                    </tr>`;
+                    tableBody.insertAdjacentHTML("beforeend", row);
+                });
+            });
+        }
+
+        document.getElementById("vat-form").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const entry = {
+                product_name: document.getElementById("product-name").value,
+                stock: document.getElementById("stock").value,
+                vat_rate: document.getElementById("vat-rate").value
+            };
+            axios.post(`${apiUrl}/calculate`, entry).then(() => {
+                loadEntries();
+            }).catch(err => alert("Error adding entry: " + err.message));
+        });
+
+        function deleteEntry(index) {
+            axios.post(`${apiUrl}/delete`, { row_index: index }).then(() => {
+                loadEntries();
+            }).catch(err => alert("Error deleting entry: " + err.message));
+        }
+
+        document.getElementById("download-excel").addEventListener("click", function () {
+            window.location.href = `${apiUrl}/download`;
+        });
+
+        document.getElementById("generate-summary").addEventListener("click", function () {
+            axios.get(`${apiUrl}/report`).then(response => {
+                document.getElementById("summary-section").style.display = "block";
+                document.getElementById("total-vat").textContent = `Total VAT Amount: ${response.data["Total VAT Amount"]}`;
+                document.getElementById("total-entries").textContent = `Total Entries: ${response.data["Total Entries"]}`;
+            }).catch(err => alert("Error generating summary: " + err.message));
+        });
+
+        loadEntries();
+    </script>
+</body>
+</html>
